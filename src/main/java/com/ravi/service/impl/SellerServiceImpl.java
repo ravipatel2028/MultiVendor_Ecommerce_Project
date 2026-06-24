@@ -154,6 +154,14 @@ public class SellerServiceImpl implements SellerService {
 
     @Override
     public Seller updateSellerAccountStatus(Long sellerId, AccountStatus accountStatus) {
-        return null;
+        if(accountStatus ==null){
+            throw new IllegalArgumentException("AccountStatus cannot be null");
+        }
+        Seller seller=getSellerById(sellerId);
+        if(seller==null){
+            throw new EntityNotFoundException("Seller with id "+sellerId+" not found");
+        }
+        seller.setAccountStatus(accountStatus);
+        return sellerRepository.save(seller);
     }
 }
