@@ -162,6 +162,7 @@ public class SellerServiceImpl implements SellerService {
             throw new EntityNotFoundException("Seller with id "+sellerId+" not found");
         }
         seller.setAccountStatus(accountStatus);
-        return sellerRepository.save(seller);
+        Seller updatedSeller= sellerRepository.save(seller);
+        return updatedSeller;
     }
 }
