@@ -1,4 +1,4 @@
-package com.ravi.response;
+package com.ravi.requests;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

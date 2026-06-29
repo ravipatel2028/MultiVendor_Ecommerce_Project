@@ -1,13 +1,13 @@
 package com.ravi.controller;
 
 
-import com.ravi.entities.User;
 import com.ravi.entities.VerificationCode;
 import com.ravi.enums.USER_ROLE;
 import com.ravi.repository.UserRepository;
+import com.ravi.requests.LoginOtpRequests;
 import com.ravi.response.ApiResponse;
 import com.ravi.response.AuthResponse;
-import com.ravi.response.SignInRequest;
+import com.ravi.requests.SignInRequest;
 import com.ravi.response.SignUpRequest;
 import com.ravi.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -46,9 +46,9 @@ public class AuthController {
     }
 
     @PostMapping("/send-otp")
-    public ResponseEntity<ApiResponse> sendOtpHandler(@RequestBody VerificationCode req) {
+    public ResponseEntity<ApiResponse> sendOtpHandler(@RequestBody LoginOtpRequests loginOtpRequests) throws Exception {
 
-        authService.sentLoginOtp(req.getEmail());
+        authService.sentLoginOtp(loginOtpRequests.getEmail(), loginOtpRequests.getRole());
 
         ApiResponse apiResponse=new ApiResponse();
         apiResponse.setMessage("success");

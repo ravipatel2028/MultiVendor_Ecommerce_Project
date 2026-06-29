@@ -6,12 +6,11 @@ import com.ravi.entities.Seller;
 import com.ravi.entities.VerificationCode;
 import com.ravi.enums.AccountStatus;
 import com.ravi.enums.USER_ROLE;
+import com.ravi.exceptions.SellerException;
 import com.ravi.repository.AddressRepository;
 import com.ravi.repository.SellerRepository;
 import com.ravi.repository.VerificationCodeRepository;
 import com.ravi.service.SellerService;
-import jakarta.persistence.EntityExistsException;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -30,18 +29,18 @@ public class SellerServiceImpl implements SellerService {
     private final VerificationCodeRepository verificationCodeRepository;
 
     @Override
-    public Seller getSellerProfile(String jwtToken) {
+    public Seller getSellerProfile(String jwtToken) throws SellerException {
         String email=jwtProvider.getEmailFromToken(jwtToken);
 
         return this.getSellerByEmail(email);
     }
 
     @Override
-    public Seller createSeller(Seller seller) {
+    public Seller createSeller(Seller seller) throws SellerException {
 
         Seller sellerExists=sellerRepository.findBySellerEmail(seller.getSellerEmail());
         if(sellerExists!=null) {
-            throw new EntityExistsException("Seller with email "+seller.getSellerEmail()+" already exists");
+            throw new SellerException("Seller with email "+seller.getSellerEmail()+" already exists");
         }
 
         Address address=addressRepository.save(seller.getPickUpAddress());
@@ -60,15 +59,15 @@ public class SellerServiceImpl implements SellerService {
     }
 
     @Override
-    public Seller getSellerById(Long sellerId) {
+    public Seller getSellerById(Long sellerId) throws SellerException {
         return sellerRepository.findById(sellerId)
-                .orElseThrow(()->new EntityNotFoundException("Seller with id "+sellerId+" not found"));
+                .orElseThrow(()->new SellerException("Seller with id "+sellerId+" not found"));
     }
 
     @Override
-    public Seller updateSeller(Long Id, Seller seller) {
+    public Seller updateSeller(Long Id, Seller seller) throws SellerException {
         Seller sellerExists=sellerRepository.findById(Id)
-                .orElseThrow(()->new EntityNotFoundException("Seller with id "+Id+" not found"));
+                .orElseThrow(()->new SellerException("Seller with id "+Id+" not found"));
 
         if(seller.getSellerName() != null) {
             sellerExists.setSellerName(seller.getSellerName());
@@ -109,10 +108,10 @@ public class SellerServiceImpl implements SellerService {
     }
 
     @Override
-    public Seller getSellerByEmail(String email) {
+    public Seller getSellerByEmail(String email) throws SellerException {
         Seller seller=sellerRepository.findBySellerEmail(email);
         if(seller==null){
-            throw new EntityNotFoundException("Seller with email "+email+" not found");
+            throw new SellerException("Seller with email "+email+" not found");
         }
         return seller;
     }
@@ -124,45 +123,44 @@ public class SellerServiceImpl implements SellerService {
     }
 
     @Override
-    public void deleteSeller(Long sellerId) {
+    public void deleteSeller(Long sellerId) throws SellerException {
         Seller seller=sellerRepository.findById(sellerId)
-                .orElseThrow(()->new EntityNotFoundException("Seller with id "+sellerId+" not found"));
+                .orElseThrow(()->new SellerException("Seller with id "+sellerId+" not found"));
 
         sellerRepository.delete(seller);
     }
 
     @Override
-    public Seller verifySeller(String email, String otp) {
+    public Seller verifySeller(String email, String otp) throws SellerException {
         VerificationCode verificationCode=verificationCodeRepository.findByEmail(email);
         if(verificationCode==null){
-            throw new EntityNotFoundException("No OTP found  for this email-  "+email);
+            throw new SellerException("No OTP found  for this email-  "+email);
         }
         if(!verificationCode.getOtp().equals(otp)){
-            throw new EntityNotFoundException("OTP does not match");
+            throw new SellerException("OTP does not match");
         }
         if(verificationCode.getCreatedAt().isBefore(LocalDateTime.now().minusMinutes(5))){
-            throw new RuntimeException("Otp Expired");
+            throw new SellerException("Otp Expired");
         }
         Seller seller=sellerRepository.findBySellerEmail(email);
 
         if(seller==null){
-            throw new EntityNotFoundException("Seller with email "+email+" not found");
+            throw new SellerException("Seller with email "+email+" not found");
         }
         seller.setEmailVerified(true);
         return sellerRepository.save(seller);
     }
 
     @Override
-    public Seller updateSellerAccountStatus(Long sellerId, AccountStatus accountStatus) {
+    public Seller updateSellerAccountStatus(Long sellerId, AccountStatus accountStatus) throws SellerException {
         if(accountStatus ==null){
-            throw new IllegalArgumentException("AccountStatus cannot be null");
+            throw new SellerException("AccountStatus cannot be null");
         }
         Seller seller=getSellerById(sellerId);
         if(seller==null){
-            throw new EntityNotFoundException("Seller with id "+sellerId+" not found");
+            throw new SellerException("Seller with id "+sellerId+" not found");
         }
         seller.setAccountStatus(accountStatus);
-        Seller updatedSeller= sellerRepository.save(seller);
-        return updatedSeller;
+        return sellerRepository.save(seller);
     }
 }

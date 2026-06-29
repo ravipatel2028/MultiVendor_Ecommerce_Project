@@ -2,14 +2,16 @@ package com.ravi.service.impl;
 
 import com.ravi.config.JwtProvider;
 import com.ravi.entities.Cart;
+import com.ravi.entities.Seller;
 import com.ravi.entities.User;
 import com.ravi.entities.VerificationCode;
 import com.ravi.enums.USER_ROLE;
 import com.ravi.repository.CartRepository;
+import com.ravi.repository.SellerRepository;
 import com.ravi.repository.UserRepository;
 import com.ravi.repository.VerificationCodeRepository;
 import com.ravi.response.AuthResponse;
-import com.ravi.response.SignInRequest;
+import com.ravi.requests.SignInRequest;
 import com.ravi.response.SignUpRequest;
 import com.ravi.service.AuthService;
 import com.ravi.service.EmailService;
@@ -33,7 +35,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +47,7 @@ public class AuthServiceImpl implements AuthService {
     private final VerificationCodeRepository verificationCodeRepository;
     private final EmailService emailService;
     private final CustomUserServiceImpl  customUserServiceImpl;
+    private final SellerRepository sellerRepository;
 
     @Override
     @Transactional
@@ -90,21 +92,30 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void sentLoginOtp(String email) {
+    public void sentLoginOtp(String email, USER_ROLE role) throws Exception {
 
         String otp = OtpUtils.generateOtpCode();
 
         String SIGNING_PREFIX = "signing_";
+        String SELLER_PREFIX="seller_";
 
         if(email.startsWith(SIGNING_PREFIX)) {
 
             email = email.substring(
                     SIGNING_PREFIX.length());
+            if(role == USER_ROLE.ROLE_CUSTOMER) {
 
-            userRepository.findByEmail(email)
-                    .orElseThrow(() ->
-                            new EntityNotFoundException(
-                                    "User not found"));
+                userRepository.findByEmail(email)
+                        .orElseThrow(() ->
+                                new EntityNotFoundException(
+                                        "User not found"));
+            }else if(role == USER_ROLE.ROLE_SELLER) {
+                Seller seller=sellerRepository.findBySellerEmail(email);
+                if(seller == null) {
+                    throw new EntityNotFoundException("Seller with email " + email + " not found");
+                }
+            }
+
         }
 
         VerificationCode existing =
@@ -161,14 +172,18 @@ public class AuthServiceImpl implements AuthService {
         return authResponse;
     }
 
-    private Authentication authenticate(String email, String otp) {
+    private Authentication authenticate(String username, String otp) {
 
-        UserDetails userDetails = customUserServiceImpl.loadUserByUsername(email);
+        UserDetails userDetails = customUserServiceImpl.loadUserByUsername(username);
+        String SELLER_PREFIX="seller_";
+        if(username.startsWith(SELLER_PREFIX)) {
+            username = username.substring(SELLER_PREFIX.length());
 
+        }
         if(userDetails == null) {
             throw new EntityNotFoundException("Bad Credentials(Username or Email entered is Wrong). Please try again");
         }
-        VerificationCode verificationCode = verificationCodeRepository.findByEmail(email);
+        VerificationCode verificationCode = verificationCodeRepository.findByEmail(username);
         if(verificationCode == null || !verificationCode.getOtp().equals(otp)) {
             throw new EntityNotFoundException("Wrong OTP");
         }
